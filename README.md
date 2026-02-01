@@ -109,6 +109,7 @@ theres some basic tools your gonna need to make basic things for examble the wai
 WAIT #duration(ms)
 
 ```asm
+; basic jingle
 SOUND #0,#200,#500
 SOUND #1,#500,#500
 WAIT #500
