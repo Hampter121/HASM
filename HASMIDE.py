@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import scrolledtext
+from tkinter import scrolledtext, filedialog
 import numpy
 import pygame
 
@@ -7,6 +7,7 @@ import pygame
 regs = {"D0":0, "D1":0, "D2":0, "D3":0}
 cmp = 0
 CALL_STACK = []
+current_wave = "SQUARE"  
 
 # ===== KEYBOARD =====
 KEYS = {}
@@ -31,14 +32,26 @@ def play_sound(ch, freq, ms):
         sample_rate = 44100
         n_samples = int(sample_rate * ms / 1000)
         t = numpy.linspace(0, ms/1000, n_samples, False)
-        wave = 0.1 * numpy.sign(numpy.sin(2 * numpy.pi * freq * t))
+
+        if current_wave == "SINE":
+            wave = numpy.sin(2 * numpy.pi * freq * t)
+        elif current_wave == "TRI":
+            wave = 2 * numpy.abs(2 * (freq * t % 1) - 1) - 1
+        elif current_wave == "SAW":
+            wave = 2 * (freq * t % 1) - 1
+        else:  
+            wave = numpy.sign(numpy.sin(2 * numpy.pi * freq * t))
+
+        wave = 0.1 * wave  
         sound = numpy.int16(wave * 32767)
         sound_stereo = numpy.column_stack((sound, sound))
+
         sound_obj = pygame.sndarray.make_sound(sound_stereo)
         if audio_channels[ch]:
             audio_channels[ch].stop()
         sound_obj.play()
         audio_channels[ch] = sound_obj
+
     except Exception as e:
         print(f"Sound error: {e}")
 
@@ -70,7 +83,6 @@ font5x5 = {
 "X":["X X","X X"," X ","X X","X X"],
 "Y":["X X","X X"," X "," X "," X "],
 "Z":["XXX","  X"," X ","X  ","XXX"],
-
 "0":["XXX","X X","X X","X X","XXX"],
 "1":[" X ","XX "," X "," X ","XXX"],
 "2":["XX ","  X"," X ","X  ","XXX"],
@@ -81,7 +93,6 @@ font5x5 = {
 "7":["XXX","  X"," X "," X "," X "],
 "8":[" XX","X X"," XX","X X"," XX"],
 "9":[" XX","X X"," XX","  X","XX "],
-
 " ":["   ","   ","   ","   ","   "],
 "!":[" X "," X "," X ","   "," X "],
 "?":["XX ","  X"," X ","   "," X "],
@@ -109,7 +120,6 @@ font5x5 = {
 "|":[" X "," X "," X "," X "," X "]
 }
 
-
 # ===== UTIL =====
 def val(x, locals=None):
     x = x.strip()
@@ -128,191 +138,179 @@ def draw_char(canvas, ch, x0, y0, color="#000000"):
     for y,row in enumerate(bitmap):
         for x,c in enumerate(row):
             if c=="X":
-                canvas.create_rectangle(
-                    x0+x*4, y0+y*4,
-                    x0+x*4+4, y0+y*4+4,
-                    fill=color, outline=color
-                )
-
-def wait_ms(ms, callback):
-    root.after(ms, callback)
+                canvas.create_rectangle(x0+x*4, y0+y*4, x0+x*4+4, y0+y*4+4, fill=color, outline=color)
 
 # ===== PARSER =====
 FUNCTIONS = {}
 LABELS = {}
-
 def parse_blocks(lines):
     stack = [(-1, [])]
     for idx,line in enumerate(lines):
+        orig = line
         line = line.split(";")[0].rstrip()
         if not line: continue
         indent = len(line)-len(line.lstrip())
-        while indent <= stack[-1][0]:
-            stack.pop()
+        while indent <= stack[-1][0]: stack.pop()
         entry = {"line":line, "children":[]}
         stack[-1][1].append(entry)
         stack.append((indent, entry["children"]))
         if line.upper().startswith("FUNC"):
             parts = line.split()
-            FUNCTIONS[parts[1]] = {
-                "lines": entry["children"],
-                "args": parts[2:]
-            }
+            name = parts[1]
+            args = parts[2:] if len(parts)>2 else []
+            FUNCTIONS[name] = {"lines": entry["children"], "args": args}
         elif line.startswith(":"):
             LABELS[line[1:].strip()] = len(stack[0][1])-1
     return stack[0][1]
 
-# ===== EXEC =====
+# ===== EXEC (non-blocking) =====
 def exec_block_step(block, canvas, debug_box, locals=None, i=0):
-    global cmp
-    if locals is None:
-        locals = {}
-
+    global cmp, current_wave
+    if locals is None: locals={}
     if i >= len(block):
         update_keys()
         return
 
     entry = block[i]
     line = entry["line"]
-    debug_box.insert(tk.END, line + "\n")
-    debug_box.see(tk.END)
-
-    parts = line.split(None, 1)
+    debug_box.insert(tk.END, line+"\n"); debug_box.see(tk.END)
+    parts = line.split(None,1)
     op = parts[0].upper()
-    args = [a.strip() for a in parts[1].split(",")] if len(parts) > 1 else []
+    args_raw = parts[1] if len(parts)>1 else ""
+    args = [a.strip() for a in args_raw.split(",")] if args_raw else []
 
     try:
-        if op == "CALL":
-            name = args[0]
-            values = [val(a, locals) for a in args[1:]]
-            if name in FUNCTIONS:
-                fn = FUNCTIONS[name]
+        if op=="CALL":
+            func_name = args[0]
+            func_args = [val(a, locals) for a in args[1:]]
+            if func_name in FUNCTIONS:
+                func_data = FUNCTIONS[func_name]
                 new_locals = locals.copy()
-                for i2, arg in enumerate(fn["args"]):
-                    if i2 < len(values):
-                        new_locals[arg] = values[i2]
-                CALL_STACK.append((block, i))
-                exec_block_step(fn["lines"], canvas, debug_box, new_locals, 0)
-                block, i = CALL_STACK.pop()
-
-        elif op == "MOVE":
-            regs[args[1]] = val(args[0], locals)
-        elif op == "ADD":
-            regs[args[1]] += val(args[0], locals)
-        elif op == "SUB":
-            regs[args[1]] -= val(args[0], locals)
-        elif op == "MUL":
-            regs[args[1]] *= val(args[0], locals)
-        elif op == "DIV":
-            regs[args[1]] //= val(args[0], locals)
-        elif op == "MOD":
-            regs[args[1]] %= val(args[0], locals)
-        elif op == "NEG":
-            regs[args[0]] = -regs[args[0]]
-        elif op == "CMP":
-            cmp = val(args[1], locals) - val(args[0], locals)
-
-        elif op == "WAIT":
-            delay = val(args[0], locals) if args else 0
-            wait_ms(delay, lambda: exec_block_step(block, canvas, debug_box, locals, i+1))
-            return
-
-        elif op == "CLS":
-            r = val(args[0], locals) if len(args)>0 else 0
-            g = val(args[1], locals) if len(args)>1 else 0
-            b = val(args[2], locals) if len(args)>2 else 0
+                for idx,arg_name in enumerate(func_data["args"]):
+                    if idx<len(func_args):
+                        new_locals[arg_name] = func_args[idx]
+                CALL_STACK.append((block,i))
+                exec_block_step(func_data["lines"], canvas, debug_box, new_locals, 0)
+                block,i = CALL_STACK.pop()
+        elif op=="MOVE": regs[args[1]] = val(args[0], locals)
+        elif op=="ADD": regs[args[1]] += val(args[0], locals)
+        elif op=="SUB": regs[args[1]] -= val(args[0], locals)
+        elif op=="MUL": regs[args[1]] *= val(args[0], locals)
+        elif op=="DIV": regs[args[1]] //= val(args[0], locals)
+        elif op=="MOD": regs[args[1]] %= val(args[0], locals)
+        elif op=="NEG": regs[args[0]] = -regs[args[0]]
+        elif op=="CMP": cmp = val(args[1], locals)-val(args[0], locals)
+        elif op=="CLS":
+            cr = val(args[0], locals) if len(args)>0 else 0
+            cg = val(args[1], locals) if len(args)>1 else 0
+            cb = val(args[2], locals) if len(args)>2 else 0
             canvas.delete("all")
-            canvas.create_rectangle(
-                0,0,320,180,
-                fill=f"#{r:02x}{g:02x}{b:02x}",
-                outline=""
-            )
-
-        elif op == "PIX":
+            canvas.create_rectangle(0,0,320,180,fill=f"#{cr:02x}{cg:02x}{cb:02x}", outline=f"#{cr:02x}{cg:02x}{cb:02x}")
+        elif op=="PIX":
             x = val(args[0], locals)
             y = val(args[1], locals)
-            r = val(args[2], locals)
-            g = val(args[3], locals)
-            b = val(args[4], locals)
-            canvas.create_rectangle(
-                x,y,x+4,y+4,
-                fill=f"#{r:02x}{g:02x}{b:02x}",
-                outline=""
-            )
-
-        elif op == "PRINT":
+            r = val(args[2], locals) if len(args)>2 else 0
+            g = val(args[3], locals) if len(args)>3 else 0
+            b = val(args[4], locals) if len(args)>4 else 0
+            canvas.create_rectangle(x,y,x+4,y+4,fill=f"#{r:02x}{g:02x}{b:02x}", outline=f"#{r:02x}{g:02x}{b:02x}")
+        elif op=="PRINT":
             x = val(args[0], locals)
             y = val(args[1], locals)
             text = args[2].strip('"')
-            color = f"#{val(args[3]):02x}{val(args[4]):02x}{val(args[5]):02x}"
-            for i2,ch in enumerate(text):
-                draw_char(canvas, ch, x+i2*24, y, color)
-
-        elif op == "SOUND":
-            play_sound(val(args[0]), val(args[1]), val(args[2]))
-
-        elif op == "BRA":
+            color = f"#{val(args[3], locals):02x}{val(args[4], locals):02x}{val(args[5], locals):02x}" if len(args)>=6 else "#FFFFFF"
+            for idx,ch in enumerate(text):
+                draw_char(canvas,ch,x+idx*24,y,color)
+        elif op=="SOUND":
+            play_sound(val(args[0], locals),val(args[1], locals),val(args[2], locals))
+        elif op=="WAIT":
+            root.after(val(args[0], locals), lambda: exec_block_step(block, canvas, debug_box, locals, i+1))
+            return
+        elif op=="BRA":
             label = args[0]
             if label in LABELS:
-                root.after(1, lambda: exec_block_step(block, canvas, debug_box, locals, LABELS[label]))
+                i = LABELS[label]
+                root.after(1, lambda: exec_block_step(block, canvas, debug_box, locals, i))
                 return
+        elif op=="WAVE":  
+            mode = args[0].upper()
+            if mode in ("SINE", "SQUARE", "TRI", "SAW"):
+                current_wave = mode
+            else:
+                raise ValueError(f"Unknown wave type: {mode}")
 
     except Exception as e:
-        debug_box.insert(tk.END, f"ERROR: {e}\n")
+        debug_box.insert(tk.END,f"ERROR: {e}\n"); debug_box.see(tk.END)
 
     canvas.update()
-
     if entry["children"]:
         exec_block_step(entry["children"], canvas, debug_box, locals.copy(), 0)
 
     root.after(1, lambda: exec_block_step(block, canvas, debug_box, locals, i+1))
 
 # ===== GUI =====
-root = tk.Tk()
-root.title("HASM IDE")
+root = tk.Tk(); root.title("HASM IDE")
 
-left = tk.Frame(root)
-left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-right = tk.Frame(root)
-right.pack(side=tk.RIGHT, fill=tk.BOTH)
+left = tk.Frame(root); left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+right = tk.Frame(root); right.pack(side=tk.RIGHT, fill=tk.BOTH)
 
 code_box = scrolledtext.ScrolledText(
     left,
+    width=50,
+    height=25,
     bg="black",
     fg="lime",
-    insertbackground="lime",   
-    insertwidth=2,             
-    insertontime=600,         
-    insertofftime=400          
+    insertbackground="lime",
+    insertwidth=3,
+    insertontime=600,
+    insertofftime=600
 )
-
 code_box.pack(fill=tk.BOTH, expand=True)
-
-code_box.focus_set()  
 code_box.insert(tk.END, """
 CLS #0,#0,#0
-PRINT #10,#10,"WAIT TEST",#255,#255,#255
-WAIT #1000
-CLS #0,#0,#0
-PRINT #10,#10,"DONE",#0,#255,#0
+PRINT #10,#10,"HELLO WORLD!",#255,#255,#255
 """)
 
-debug_box = scrolledtext.ScrolledText(right, height=10, bg="black", fg="lime")
+debug_box = scrolledtext.ScrolledText(right, width=50, height=10, bg="black", fg="lime")
 debug_box.pack(fill=tk.BOTH)
 
 canvas = tk.Canvas(right, width=320, height=180, bg="black")
-canvas.pack()
+canvas.pack(pady=10)
 canvas.bind("<KeyPress>", on_key)
 canvas.bind("<KeyRelease>", on_key_release)
 canvas.focus_set()
 
-def run():
-    block = parse_blocks(code_box.get("1.0", tk.END).splitlines())
-    debug_box.delete("1.0", tk.END)
-    canvas.delete("all")
-    exec_block_step(block, canvas, debug_box)
+# ===== FILE SAVE/LOAD =====
+def save_script():
+    path = filedialog.asksaveasfilename(defaultextension=".hasm", filetypes=[("HASM Script",".hasm")])
+    if path:
+        with open(path, "w") as f:
+            f.write(code_box.get("1.0", tk.END))
 
-tk.Button(left, text="Run", command=run).pack(fill=tk.X)
+def load_script():
+    path = filedialog.askopenfilename(defaultextension=".hasm", filetypes=[("HASM Script",".hasm")])
+    if path:
+        with open(path, "r") as f:
+            code_box.delete("1.0", tk.END)
+            code_box.insert(tk.END, f.read())
+
+# ===== BUTTONS =====
+run_btn = tk.Button(left, text="Run", command=lambda: run(), bg="black", fg="lime", activebackground="lime", activeforeground="black")
+run_btn.pack(fill=tk.X)
+
+save_btn = tk.Button(left, text="Save .hasm", command=save_script, bg="black", fg="lime", activebackground="lime", activeforeground="black")
+save_btn.pack(fill=tk.X)
+
+load_btn = tk.Button(left, text="Load .hasm", command=load_script, bg="black", fg="lime", activebackground="lime", activeforeground="black")
+load_btn.pack(fill=tk.X)
+
+# ===== RUN FUNCTION =====
+def run():
+    lines = code_box.get("1.0", tk.END).splitlines()
+    block_tree = parse_blocks(lines)
+    canvas.delete("all")
+    debug_box.delete("1.0", tk.END)
+    canvas.focus_set()
+    exec_block_step(block_tree, canvas, debug_box)
 
 root.mainloop()
+
