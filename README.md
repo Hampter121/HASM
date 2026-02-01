@@ -103,6 +103,24 @@ IFKEY SPACE, :LABEL
 ```
 
 
+# MISC
+
+theres some basic tools your gonna need to make basic things for examble the wait function
+WAIT #duration(ms)
+
+```asm
+SOUND #0,#200,#500
+SOUND #1,#500,#500
+WAIT #500
+SOUND #0,#200,#500
+SOUND #1,#450,#500
+WAIT #500
+SOUND #0,#200,#500
+SOUND #1,#300,#500
+WAIT #500
+SOUND #0,#200,#500
+SOUND #1,#400,#500
+```
 
 
 
