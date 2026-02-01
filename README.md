@@ -3,6 +3,17 @@ HASM is a lightweight scripting language for making pixel graphics, sounds, and 
 
 
 
+# UPDATES
+
+
+HUGE sound revamp adding sawtone and wave formats of sound
+
+also adding files so you can save progress and projects
+
+
+
+
+
 
 
 
@@ -77,6 +88,29 @@ how you would do it is
 ; plays sound at 10000 hz for 500 ms on channel 0
 SOUND #0,#10000,#500
 ```
+
+
+for more dynamic and nicer sounding stuff you can also use sawtones and waves
+
+WAVE SINE
+SOUND #ch,#Hz,#duration(ms)
+
+
+```asm
+; plays sine sound
+WAVE SINE
+SOUND #0,#200,#500
+; plays saw sound
+WAVE SAW
+SOUND #0,#200,#500
+; plays triangle sound
+WAVE TRI
+SOUND #0,#200,#500
+; plays square sound
+WAVE SQUARE
+SOUND #0,#200,#500
+```
+
 
 
 
