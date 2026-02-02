@@ -7,7 +7,8 @@ import pygame
 regs = {"D0":0, "D1":0, "D2":0, "D3":0}
 cmp = 0
 CALL_STACK = []
-current_wave = "SQUARE"  
+current_wave = "SQUARE"
+ANIMATIONS = {}
 
 # ===== KEYBOARD =====
 KEYS = {}
@@ -39,10 +40,10 @@ def play_sound(ch, freq, ms):
             wave = 2 * numpy.abs(2 * (freq * t % 1) - 1) - 1
         elif current_wave == "SAW":
             wave = 2 * (freq * t % 1) - 1
-        else:  
+        else:
             wave = numpy.sign(numpy.sin(2 * numpy.pi * freq * t))
 
-        wave = 0.1 * wave  
+        wave = 0.1 * wave
         sound = numpy.int16(wave * 32767)
         sound_stereo = numpy.column_stack((sound, sound))
 
@@ -56,69 +57,7 @@ def play_sound(ch, freq, ms):
         print(f"Sound error: {e}")
 
 # ===== FONT =====
-font5x5 = {
-"A":[" X ","X X","XXX","X X","X X"],
-"B":["XX ","X X","XX ","X X","XX "],
-"C":[" XX","X  ","X  ","X  "," XX"],
-"D":["XX ","X X","X X","X X","XX "],
-"E":["XXX","X  ","XX ","X  ","XXX"],
-"F":["XXX","X  ","XX ","X  ","X  "],
-"G":[" XX","X  ","X X","X X"," XX"],
-"H":["X X","X X","XXX","X X","X X"],
-"I":["XXX"," X "," X "," X ","XXX"],
-"J":["  X","  X","  X","X X"," X "],
-"K":["X X","X X","XX ","X X","X X"],
-"L":["X  ","X  ","X  ","X  ","XXX"],
-"M":["X X","XXX","XXX","X X","X X"],
-"N":["X X","XXX","XXX","XXX","X X"],
-"O":["XXX","X X","X X","X X","XXX"],
-"P":["XX ","X X","XX ","X  ","X  "],
-"Q":["XXX","X X","X X","XX "," XX"],
-"R":["XX ","X X","XX ","X X","X X"],
-"S":[" XX","X  "," X ","  X","XX "],
-"T":["XXX"," X "," X "," X "," X "],
-"U":["X X","X X","X X","X X","XXX"],
-"V":["X X","X X","X X","X X"," X "],
-"W":["X X","X X","XXX","XXX","X X"],
-"X":["X X","X X"," X ","X X","X X"],
-"Y":["X X","X X"," X "," X "," X "],
-"Z":["XXX","  X"," X ","X  ","XXX"],
-"0":["XXX","X X","X X","X X","XXX"],
-"1":[" X ","XX "," X "," X ","XXX"],
-"2":["XX ","  X"," X ","X  ","XXX"],
-"3":["XX ","  X"," X ","  X","XX "],
-"4":["X X","X X","XXX","  X","  X"],
-"5":["XXX","X  ","XX ","  X","XX "],
-"6":[" XX","X  ","XX ","X X"," XX"],
-"7":["XXX","  X"," X "," X "," X "],
-"8":[" XX","X X"," XX","X X"," XX"],
-"9":[" XX","X X"," XX","  X","XX "],
-" ":["   ","   ","   ","   ","   "],
-"!":[" X "," X "," X ","   "," X "],
-"?":["XX ","  X"," X ","   "," X "],
-".":["   ","   ","   ","   "," X "],
-",":["   ","   ","   "," X ","X  "],
-"-":["   ","XXX","   ","   ","   "],
-":":["   "," X ","   "," X ","   "],
-";":["   "," X ","   "," X ","X  "],
-"'":[" X "," X ","   ","   ","   "],
-"\"":["X X","X X","   ","   ","   "],
-"/":["  X","  X"," X ","X  ","X  "],
-"\\":["X  ","X  "," X ","  X","  X"],
-"+":["   "," X ","XXX"," X ","   "],
-"=":["   ","XXX","   ","XXX","   "],
-"*":[" X ","X X"," X ","X X"," X "],
-"#":[" X ","XXX"," X ","XXX"," X "],
-"&":[" X ","X X"," X ","X X"," XX"],
-"%":["XX ","  X"," X ","X  ","XX"],
-"@":[" XX","X X","X X","X  "," XX"],
-"$":[" X ","XXX"," X ","XX "," X "],
-"^":[" X ","X X","   ","   ","   "],
-"_":["   ","   ","   ","   ","XXX"],
-"`":[" X ","  X","   ","   ","   "],
-"~":["   "," XX","X X","   ","   "],
-"|":[" X "," X "," X "," X "," X "]
-}
+font5x5 = {"A":[" X ","X X","XXX","X X","X X"], "B":["XX ","X X","XX ","X X","XX "], "C":[" XX","X  ","X  ","X  "," XX"], "D":["XX ","X X","X X","X X","XX "], "E":["XXX","X  ","XX ","X  ","XXX"], "F":["XXX","X  ","XX ","X  ","X  "], "G":[" XX","X  ","X X","X X"," XX"], "H":["X X","X X","XXX","X X","X X"], "I":["XXX"," X "," X "," X ","XXX"], "J":["  X","  X","  X","X X"," X "], "K":["X X","X X","XX ","X X","X X"], "L":["X  ","X  ","X  ","X  ","XXX"], "M":["X X","XXX","XXX","X X","X X"], "N":["X X","XXX","XXX","XXX","X X"], "O":["XXX","X X","X X","X X","XXX"], "P":["XX ","X X","XX ","X  ","X  "], "Q":["XXX","X X","X X","XX "," XX"], "R":["XX ","X X","XX ","X X","X X"], "S":[" XX","X  "," X ","  X","XX "], "T":["XXX"," X "," X "," X "," X "], "U":["X X","X X","X X","X X","XXX"], "V":["X X","X X","X X","X X"," X "], "W":["X X","X X","XXX","XXX","X X"], "X":["X X","X X"," X ","X X","X X"], "Y":["X X","X X"," X "," X "," X "], "Z":["XXX","  X"," X ","X  ","XXX"], "0":["XXX","X X","X X","X X","XXX"], "1":[" X ","XX "," X "," X ","XXX"], "2":["XX ","  X"," X ","X  ","XXX"], "3":["XX ","  X"," X ","  X","XX "], "4":["X X","X X","XXX","  X","  X"], "5":["XXX","X  ","XX ","  X","XX "], "6":[" XX","X  ","XX ","X X"," XX"], "7":["XXX","  X"," X "," X "," X "], "8":[" XX","X X"," XX","X X"," XX"], "9":[" XX","X X"," XX","  X","XX "], " ":["   ","   ","   ","   ","   "], "!":[" X "," X "," X ","   "," X "], "?":["XX ","  X"," X ","   "," X "], ".":["   ","   ","   ","   "," X "], ",":["   ","   ","   "," X ","X  "], "-":["   ","XXX","   ","   ","   "], ":":["   "," X ","   "," X ","   "], ";":["   "," X ","   "," X ","X  "], "'":[" X "," X ","   ","   ","   "], "\"":["X X","X X","   ","   ","   "], "/":["  X","  X"," X ","X  ","X  "], "\\":["X  ","X  "," X ","  X","  X"], "+":["   "," X ","XXX"," X ","   "], "=":["   ","XXX","   ","XXX","   "], "*":[" X ","X X"," X ","X X"," X "], "#":[" X ","XXX"," X ","XXX"," X "], "&":[" X ","X X"," X ","X X"," XX"], "%":["XX ","  X"," X ","X  ","XX"], "@":[" XX","X X","X X","X  "," XX"], "$":[" X ","XXX"," X ","XX "," X "], "^":[" X ","X X","   ","   ","   "], "_":["   ","   ","   ","   ","XXX"], "`":[" X ","  X","   ","   ","   "], "~":["   "," XX","X X","   ","   "], "|":[" X "," X "," X "," X "," X "]}
 
 # ===== UTIL =====
 def val(x, locals=None):
@@ -143,6 +82,7 @@ def draw_char(canvas, ch, x0, y0, color="#000000"):
 # ===== PARSER =====
 FUNCTIONS = {}
 LABELS = {}
+
 def parse_blocks(lines):
     stack = [(-1, [])]
     for idx,line in enumerate(lines):
@@ -159,6 +99,16 @@ def parse_blocks(lines):
             name = parts[1]
             args = parts[2:] if len(parts)>2 else []
             FUNCTIONS[name] = {"lines": entry["children"], "args": args}
+        elif line.upper().startswith("ANIM"):
+            parts = line.split()
+            name = parts[1]
+            speed = val(parts[2]) if len(parts)>2 else 200
+            j = idx + 1
+            frame_lines = []
+            while j < len(lines) and not lines[j].upper().startswith("ENDANIM"):
+                frame_lines.append(lines[j])
+                j += 1
+            ANIMATIONS[name] = {"frames":[parse_blocks(frame_lines)], "speed": speed}
         elif line.startswith(":"):
             LABELS[line[1:].strip()] = len(stack[0][1])-1
     return stack[0][1]
@@ -231,12 +181,29 @@ def exec_block_step(block, canvas, debug_box, locals=None, i=0):
                 i = LABELS[label]
                 root.after(1, lambda: exec_block_step(block, canvas, debug_box, locals, i))
                 return
-        elif op=="WAVE":  
+        elif op=="WAVE":
             mode = args[0].upper()
             if mode in ("SINE", "SQUARE", "TRI", "SAW"):
                 current_wave = mode
             else:
                 raise ValueError(f"Unknown wave type: {mode}")
+        elif op=="ANIM":
+            pass  
+        elif op=="DRAWANIM":
+            anim_name = args[0]
+            xoff = val(args[1], locals) if len(args)>1 else 0
+            yoff = val(args[2], locals) if len(args)>2 else 0
+            if anim_name in ANIMATIONS:
+                frames = ANIMATIONS[anim_name]["frames"]
+                speed = ANIMATIONS[anim_name]["speed"]
+                def play_frame(i=0):
+                    frame = frames[i]
+                    debug_box.insert(tk.END,f"FRAME {i+1} of {anim_name}:\n")
+                    debug_box.see(tk.END)
+                    exec_block_step(frame, canvas, debug_box, locals.copy(), 0)
+                    next_i = (i+1) % len(frames)
+                    root.after(speed, lambda: play_frame(next_i))
+                play_frame()
 
     except Exception as e:
         debug_box.insert(tk.END,f"ERROR: {e}\n"); debug_box.see(tk.END)
@@ -253,22 +220,9 @@ root = tk.Tk(); root.title("HASM IDE")
 left = tk.Frame(root); left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 right = tk.Frame(root); right.pack(side=tk.RIGHT, fill=tk.BOTH)
 
-code_box = scrolledtext.ScrolledText(
-    left,
-    width=50,
-    height=25,
-    bg="black",
-    fg="lime",
-    insertbackground="lime",
-    insertwidth=3,
-    insertontime=600,
-    insertofftime=600
-)
+code_box = scrolledtext.ScrolledText(left, width=50, height=25, bg="black", fg="lime", insertbackground="lime", insertwidth=3, insertontime=600, insertofftime=600)
 code_box.pack(fill=tk.BOTH, expand=True)
-code_box.insert(tk.END, """
-CLS #0,#0,#0
-PRINT #10,#10,"HELLO WORLD!",#255,#255,#255
-""")
+code_box.insert(tk.END, "CLS #0,#0,#0\nPRINT #10,#10,\"HELLO WORLD!\",#255,#255,#255\n")
 
 debug_box = scrolledtext.ScrolledText(right, width=50, height=10, bg="black", fg="lime")
 debug_box.pack(fill=tk.BOTH)
