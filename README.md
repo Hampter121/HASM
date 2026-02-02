@@ -74,19 +74,6 @@ PRINT #10,#10,"hello world!",#255,#255,#255
 ```
 
 
-also you can use pre set up shapes too
-
-```asm
-CLS #0,#0,#0
-;makes circle
-CIR #60,#60,#40,#255,#0,#0,FILL
-; makes triangle
-TRIA #200,#60,#50,#100,#255,#255,#0,FILL
-; makes polygon
-POLY #60,#200,#6,#40,#0,#255,#0,FILL
-; makes polygon
-POLY #200,#200,#5,#50,#0,#0,#255,FILL
-```
 
 
 
@@ -156,14 +143,10 @@ you can write animations using any of the graphical tools given by staring an an
 
 ```asm
 ANIM Yuri,#200
-CLS #0,#0,#0
-CIR #50,#80,#20,#255,#0,#0,FILL
-WAIT #100
-CLS #0,#0,#0
-CIR #50,#100,#20,#255,#0,#0,FILL
+CLS #255,#255,#255
+WAIT #500
+CLS #255,#0,#255
 ENDANIM
-
-CLS #0,#0,#0
 DRAWANIM Yuri,#0,#0
 ```
 
