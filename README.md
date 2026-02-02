@@ -6,11 +6,7 @@ HASM is a lightweight scripting language for making pixel graphics, sounds, and 
 # UPDATES
 
 
-HUGE sound revamp adding sawtone and wave formats of sound
-
-also adding files so you can save progress and projects
-
-
+big graphics revamp and animation system
 
 
 
@@ -78,6 +74,21 @@ PRINT #10,#10,"hello world!",#255,#255,#255
 ```
 
 
+also you can use pre set up shapes too
+
+```asm
+CLS #0,#0,#0
+;makes circle
+CIR #60,#60,#40,#255,#0,#0,FILL
+; makes triangle
+TRIA #200,#60,#50,#100,#255,#255,#0,FILL
+; makes polygon
+POLY #60,#200,#6,#40,#0,#255,#0,FILL
+; makes polygon
+POLY #200,#200,#5,#50,#0,#0,#255,FILL
+```
+
+
 
 # SOUND
 sound is still in development but its really easy right now
@@ -134,6 +145,26 @@ this is still a work in progress but basicly you tell the script "ifkey {defined
 ```asm
 ; waits for you to press space
 IFKEY SPACE, :LABEL
+```
+
+
+
+# ANIMATIONS
+
+
+you can write animations using any of the graphical tools given by staring an animation and naming it then creating frames and then ending the animation then drawing it
+
+```asm
+ANIM Yuri,#200
+CLS #0,#0,#0
+CIR #50,#80,#20,#255,#0,#0,FILL
+WAIT #100
+CLS #0,#0,#0
+CIR #50,#100,#20,#255,#0,#0,FILL
+ENDANIM
+
+CLS #0,#0,#0
+DRAWANIM Yuri,#0,#0
 ```
 
 
