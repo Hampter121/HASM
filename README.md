@@ -145,7 +145,7 @@ you can write animations using any of the graphical tools given by staring an an
 ANIM Yuri,#200
 CLS #255,#255,#255
 WAIT #500
-CLS #255,#0,#255
+CLS #128,#0,#128
 ENDANIM
 DRAWANIM Yuri,#0,#0
 ```
